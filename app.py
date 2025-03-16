@@ -19,7 +19,7 @@ class DeepFakeModel(nn.Module):
 
 # Initialize the model
 model = DeepFakeModel()
-model.load_state_dict(torch.load("model.pth", map_location=torch.device("cpu")))
+model.load_state_dict(torch.load("deepfake_model.pth", map_location=torch.device("cpu")))
 model.eval()  # Now the model is in evaluation mode
 
 # Define image transformations
