@@ -1,48 +1,55 @@
-from flask import Flask, render_template, request, jsonify
 import torch
+import torch.nn as nn
+import torch.optim as optim
 import torchvision.transforms as transforms
 from PIL import Image
 import io
+from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-# Load DeepFake Detection Model
-model = torch.load("deepfake_model.pth", map_location=torch.device("cpu"))
-model.eval()
+# Define the model architecture (Replace this with your actual model)
+class DeepFakeModel(nn.Module):
+    def __init__(self):
+        super(DeepFakeModel, self).__init__()
+        self.fc = nn.Linear(512, 2)  # Example layer, replace with actual architecture
 
-# Image transformation
+    def forward(self, x):
+        return self.fc(x)
+
+# Initialize the model
+model = DeepFakeModel()
+model.load_state_dict(torch.load("model.pth", map_location=torch.device("cpu")))
+model.eval()  # Now the model is in evaluation mode
+
+# Define image transformations
 transform = transforms.Compose([
-    transforms.Resize((300, 300)),
+    transforms.Resize((224, 224)),  
     transforms.ToTensor(),
-    transforms.Normalize(mean=[0.5], std=[0.5])
 ])
 
-# Route for homepage (renders the UI)
-@app.route("/")
-def home():
-    return render_template("index.html")
-
-# Prediction API
-@app.route("/predict", methods=["POST"])
+# API endpoint to predict deepfake
+@app.route('/predict', methods=['POST'])
 def predict():
-    if "image" not in request.files:
-        return jsonify({"error": "No file uploaded"}), 400
+    if 'image' not in request.files:
+        return jsonify({"error": "No image file provided"}), 400
 
-    image = request.files["image"]
-    if image.filename == "":
-        return jsonify({"error": "No selected file"}), 400
+    image_file = request.files['image']
+    image = Image.open(io.BytesIO(image_file.read()))
+    image = transform(image).unsqueeze(0)  # Add batch dimension
 
-    # Preprocess the image
-    image = Image.open(io.BytesIO(image.read()))
-    image = transform(image).unsqueeze(0)
-
-    # Predict
     with torch.no_grad():
         output = model(image)
-        prediction = torch.sigmoid(output).item()
+        prediction = torch.argmax(output, dim=1).item()
+        confidence = torch.nn.functional.softmax(output, dim=1).max().item()
 
-    return jsonify({"prediction": "Fake" if prediction > 0.5 else "Real", "confidence": round(prediction * 100, 2)})
+    result = {
+        "prediction": "Fake" if prediction == 1 else "Real",
+        "confidence": round(confidence * 100, 2)  # Convert to percentage
+    }
 
-# Run the Flask app
-if __name__ == "__main__":
-    app.run(debug=True)
+    return jsonify(result)
+
+# Run the app
+if __name__ == '__main__':
+    app.run(host="0.0.0.0", port=5000)
