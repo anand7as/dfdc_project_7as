@@ -21,6 +21,18 @@ transform = transforms.Compose([
     transforms.Normalize(mean=[0.5], std=[0.5])
 ])
 
+
+
+app = Flask(__name__)
+
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({"message": "DeepFake Detection API is live!"})
+
+if __name__ == "__main__":
+    app.run(debug=True)
+
+
 @app.route("/predict", methods=["POST"])
 def predict():
     file = request.files["image"]
