@@ -9,18 +9,26 @@ from flask import Flask, request, jsonify
 app = Flask(__name__)
 
 # Define the model architecture (Replace this with your actual model)
+import torch
+import torch.nn as nn
+import torchvision.models as models
+
 class DeepFakeModel(nn.Module):
     def __init__(self):
         super(DeepFakeModel, self).__init__()
-        self.fc = nn.Linear(512, 2)  # Example layer, replace with actual architecture
+        self.model = models.resnet18(pretrained=True)  # Ensure consistency with training
+        num_ftrs = self.model.fc.in_features  # Get the input size of the last layer
+        self.model.fc = nn.Linear(num_ftrs, 1)  # Change to 1 for binary classification, 2 for multi-class
 
     def forward(self, x):
-        return self.fc(x)
+        return self.model(x)
+
 
 # Initialize the model
 model = DeepFakeModel()
-model.load_state_dict(torch.load("deepfake_model.pth", map_location=torch.device("cpu")))
-model.eval()  # Now the model is in evaluation mode
+model.load_state_dict(torch.load("deepfake_model.pth", map_location=torch.device("cpu")), strict=False)
+model.eval()
+
 
 # Define image transformations
 transform = transforms.Compose([
