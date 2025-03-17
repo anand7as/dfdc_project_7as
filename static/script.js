@@ -11,19 +11,25 @@ document.getElementById("upload-form").addEventListener("submit", async function
 
     formData.append("image", imageInput);
 
-    let response = await fetch("/predict", {
-        method: "POST",
-        body: formData
-    });
+    try {
+        let response = await fetch("/predict", {
+            method: "POST",
+            body: formData
+        });
 
-    let result = await response.json();
+        let result = await response.json();
 
-    if (result.error) {
-        alert(result.error);
-        return;
+        if (result.error) {
+            alert(result.error);
+            return;
+        }
+
+        document.getElementById("prediction-text").innerText = `Prediction: ${result.prediction}`;
+        document.getElementById("confidence-text").innerText = `Confidence: ${result.confidence}%`;
+        document.getElementById("result").classList.remove("hidden");
+
+    } catch (error) {
+        console.error("Error:", error);
+        alert("Something went wrong. Please try again.");
     }
-
-    document.getElementById("prediction-text").innerText = "Prediction: " + result.prediction;
-    document.getElementById("confidence-text").innerText = "Confidence: " + result.confidence;
-    document.getElementById("result").classList.remove("hidden");
 });
