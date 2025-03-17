@@ -4,10 +4,10 @@ import torch.nn as nn
 import torchvision.transforms as transforms
 from PIL import Image
 import io
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 import torchvision.models as models
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder="static", template_folder="templates")  # Serve UI files
 
 # Define the model architecture
 class DeepFakeModel(nn.Module):
@@ -31,12 +31,12 @@ transform = transforms.Compose([
     transforms.ToTensor(),
 ])
 
-# ✅ Root endpoint to check if app is running
+# ✅ Serve the UI at the root URL
 @app.route('/')
 def home():
-    return jsonify({"message": "DeepFake Detection API is running!"})
+    return render_template("index.html")  # Loads your frontend UI
 
-# ✅ Predict endpoint
+# ✅ Predict endpoint (API)
 @app.route('/predict', methods=['POST'])
 def predict():
     if 'image' not in request.files:
