@@ -1,42 +1,42 @@
+import os
 import torch
 import torch.nn as nn
-import torch.optim as optim
 import torchvision.transforms as transforms
 from PIL import Image
 import io
 from flask import Flask, request, jsonify
+import torchvision.models as models
 
 app = Flask(__name__)
 
-# Define the model architecture (Replace this with your actual model)
-import torch
-import torch.nn as nn
-import torchvision.models as models
-
+# Define the model architecture
 class DeepFakeModel(nn.Module):
     def __init__(self):
         super(DeepFakeModel, self).__init__()
-        self.model = models.resnet18(pretrained=True)  # Ensure consistency with training
-        num_ftrs = self.model.fc.in_features  # Get the input size of the last layer
-        self.model.fc = nn.Linear(num_ftrs, 1)  # Change to 1 for binary classification, 2 for multi-class
+        self.model = models.resnet18(weights="IMAGENET1K_V1")  # Updated from pretrained=True
+        num_ftrs = self.model.fc.in_features
+        self.model.fc = nn.Linear(num_ftrs, 1)  # Binary classification
 
     def forward(self, x):
         return self.model(x)
 
-
-# Initialize the model
+# Initialize and load the model
 model = DeepFakeModel()
 model.load_state_dict(torch.load("deepfake_model.pth", map_location=torch.device("cpu")), strict=False)
 model.eval()
 
-
 # Define image transformations
 transform = transforms.Compose([
-    transforms.Resize((224, 224)),  
+    transforms.Resize((224, 224)),
     transforms.ToTensor(),
 ])
 
-# API endpoint to predict deepfake
+# ✅ Root endpoint to check if app is running
+@app.route('/')
+def home():
+    return jsonify({"message": "DeepFake Detection API is running!"})
+
+# ✅ Predict endpoint
 @app.route('/predict', methods=['POST'])
 def predict():
     if 'image' not in request.files:
@@ -48,19 +48,16 @@ def predict():
 
     with torch.no_grad():
         output = model(image)
-        prediction = torch.argmax(output, dim=1).item()
-        confidence = torch.nn.functional.softmax(output, dim=1).max().item()
+        prediction = torch.sigmoid(output).item()  # Use sigmoid for binary classification
 
     result = {
-        "prediction": "Fake" if prediction == 1 else "Real",
-        "confidence": round(confidence * 100, 2)  # Convert to percentage
+        "prediction": "Fake" if prediction > 0.5 else "Real",
+        "confidence": round(prediction * 100, 2)  # Convert to percentage
     }
 
     return jsonify(result)
 
-# Run the app
+# ✅ Run the app with Render's dynamic port
 if __name__ == '__main__':
-    import os
     port = int(os.environ.get("PORT", 10000))  # Use Render's port
     app.run(host="0.0.0.0", port=port)
-
